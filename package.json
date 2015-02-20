@@ -1,0 +1,17 @@
+{
+  "author": "Manuel Hervo",
+  "name": "crawler",
+  "description": "crawler for website with sitemap.xml.",
+  "version": "0.0.1",
+  "engines": {
+    "node": "0.10.33"
+  },
+  "dependencies": {
+    "libxmljs": "0.13.*",
+    "phantom": "^0.7.2",
+    "phantomjs": "1.9.15",
+    "progress": "1.1.8"
+  },
+  "devDependencies": {
+  }
+}
