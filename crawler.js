@@ -104,7 +104,7 @@ if (cluster.isMaster) {
             loader: 'Finish'
           });
           console.log('\n\x1b[35mAll urls are called, %d links found\x1b[0m', data.length);
-          util.transformToCsv(data, function(err) {
+          util.transformToCsv(data, baseUrl, function(err) {
             process.exit(err ? 1 : 0);
           });
         }

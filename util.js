@@ -1,11 +1,11 @@
 /*jshint sub: true */
 var util = exports = module.exports = {};
 
-util.transformToCsv = function(data, done) {
-  var csv = 'source;destination;ancre;\n', separator = '', page, link;
+util.transformToCsv = function(data, baseUrl, done) {
+  var csv = 'source;destination;ancre\n', separator = '', page, link;
   for (var i = 0, l = data.length; i < l; i++) {
     link = data[i];
-    csv += '"' + util.addBaseUrl(link.src) + '";"' + util.addBaseUrl(link.dest) + '";"' + link.anchor + '"\n';
+    csv += '"' + util.addBaseUrl(baseUrl, link.src) + '";"' + util.addBaseUrl(baseUrl, link.dest) + '";"' + link.anchor + '"\n';
   }
   
   require('fs').writeFile(fileCSV, csv, function (err) {
@@ -19,9 +19,13 @@ util.transformToCsv = function(data, done) {
 };
 
 var regHttp = /^http/;
-util.addBaseUrl = function(link) {
+util.addBaseUrl = function(base, link) {
   if (!regHttp.test(link)) {
-    return baseUrl + link;
+    if (base.substr(-1) !== '/' && link.substr(0, 1) !== '/') {
+      link = base + '/' + link;
+    } else {
+      link = base + link;
+    }
   }
   return link;
 };
