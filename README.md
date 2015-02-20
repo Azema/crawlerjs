@@ -7,12 +7,12 @@ Crawler that retrieves web pages links SAP
 ## Usage
 
 Firstly, install dependencies
-```
+```bash
 cd crawler
 npm install
 ```
 
-```
+```bash
 node ./crawler.js <baseUrl> <sitemap> <fileCSV> [nbProcess]
 ```
 
