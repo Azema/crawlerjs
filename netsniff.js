@@ -38,6 +38,9 @@ next();
 function getPage(url, done) {
   var page = require('webpage').create();
   page.address = url;
+  // page.settings.userAgent += ' CrawlerjsBot';
+  page.settings.userAgent = 'Mozilla/5.0 (Windows NT 6.1; rv:35.0) Gecko/20100101 Firefox/35.0 CrawlerjsBot';
+  // console.log('userAgent: ', page.settings.userAgent);
   page.onLoadStarted = function () {
     // console.log('page started');
     page.startTime = new Date();
@@ -49,22 +52,48 @@ function getPage(url, done) {
     } else {
       // console.log('page loaded');
       page.endTime = new Date();
-      page.links = page.evaluate(function () {
-        var links = [], $links = $('a'), length = $links.length,
-            reg = /(javascript|mailto)/i,
-            address = document.location.toString();
-        $links.each(function(index, link) {
-          var href = link.href;
-          if (!reg.test(href)) {
-            links.push({
-              src: address,
-              dest: href,
-              anchor: $(link).text().trim()
-            });
-          }
-        });
-        return links;
+      
+      page.hasJQuery = page.evaluate(function () {
+        if (typeof jQuery === 'function') {
+          var links = [], $links = jQuery('a'), length = $links.length,
+              reg = /(javascript|mailto|#)/i,
+              address = document.location.toString();
+          $links.each(function(index, link) {
+            var href = link.href;
+            if (!reg.test(href)) {
+              links.push({
+                src: address,
+                dest: href,
+                anchor: jQuery(link).text().trim()
+              });
+            }
+          });
+          return links;
+        } else {
+          return false;
+        }
       });
+      if (typeof page.hasJQuery === 'boolean') {
+        page.links = [];
+        page.includeJs('http://ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js', function() {
+          // jQuery is loaded, now manipulate the DOM
+          var $links = jQuery('a'), length = $links.length,
+              reg = /(javascript|mailto|#)/i,
+              address = document.location.toString();
+          $links.each(function(index, link) {
+            var href = link.href;
+            if (!reg.test(href)) {
+              page.links.push({
+                src: address,
+                dest: href,
+                anchor: jQuery(link).text().trim()
+              });
+            }
+          });
+        });
+      } else {
+        page.links = page.hasJQuery;
+      }
       console.log(JSON.stringify({
         id: page.address,
         links: page.links

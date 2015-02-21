@@ -67,7 +67,10 @@ if (cluster.isMaster) {
       console.log('Error de récupération du sitemap: ', err);
       return process.exit(1);
     }
-    var doc = libxmljs.parseXml('<?xml version="1.0" encoding="UTF-8"?>' + result),
+    if (!/<?xml\s/.test(result)) {
+      result = '<?xml version="1.0" encoding="UTF-8"?>' + result;
+    }
+    var doc = libxmljs.parseXml(result  ),
         locations = doc.find('//default:loc', { default: 'http://www.sitemaps.org/schemas/sitemap/0.9' }),
         length = locations.length,
         urls = [], part;
@@ -137,7 +140,7 @@ if (cluster.isMaster) {
       }
       var _data = '', web;
       waiting--;
-      web = child.spawn(phantomjs.path, ["--load-images=false", "--ignore-ssl-errors=yes", __dirname + '/netsniff.js', url]);
+      web = child.spawn(phantomjs.path, ["--load-images=false", "--ignore-ssl-errors=yes", '--ssl-protocol=tlsv1', __dirname + '/netsniff.js', url]);
       web.stdout.on('data', function(data) {
         _data += data.toString();
       });
@@ -145,9 +148,9 @@ if (cluster.isMaster) {
         try {
           _data = JSON.parse(_data);
         } catch (e) {
-          _data = null;
           console.error(e);
           console.log(_data);
+          _data = null;
         }
         done(_data);
         waiting++;

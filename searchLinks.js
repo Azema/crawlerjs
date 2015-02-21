@@ -205,4 +205,4 @@ function writeToCSV(pages) {
 process.on('exit', function() {
   console.log('exit');
   writeToCSV(pageLinks);
-})
+});
