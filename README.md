@@ -1,5 +1,5 @@
 # crawlerjs
-Crawler that retrieves web pages links SAP
+Crawler that retrieves web pages links SAP with [phantomjs](http://phantomjs.org/).
 
 ## Dependencies
 [Node.js](http://nodejs.org/) is necessary to launch the crawler. It's easy to install, go to the site for details.
@@ -12,15 +12,35 @@ cd crawler
 npm install
 ```
 
+### CrawlerSitemap
+CrawlerSitemap retrieve URLs in the sitemap and analyze all pages to find links.
 ```bash
-node ./crawler.js <baseUrl> <sitemap> <fileCSV> [nbProcess]
+Usage: node crawlerSitemap.js [OPTION] baseUrl
+
+  -s, --sitemap=ARG    Sitemap path (HTTP or FileSystem)
+  -o, --output=ARG     CSV file to save links
+  -p, --processes=ARG  number of processes to launch in same time (default: 5)
+  -d, --delimitor=ARG  Delimitor CSV (default: ;)
+  -h, --help           display this help
+  -v, --version        show version
+
+Respository: https://github.com/Azema/crawlerjs
 ```
 
-* **baseUrl**: The URL base of website without final slash
-* **sitemap**: The path of sitemap file HTTP or FileSystem
-* **fileCSV**: The path of CSV file to store links
-* **nbProcess**: _Optional_, number of processes to call web pages
+### CrawlerSearch
+CrawlerSearch research links and follows them to build a tree.
+```bash
+Usage: node crawlerSearch.js [OPTION] baseUrl
 
+  -o, --output=ARG     CSV file to save links
+  -p, --processes=ARG  number of processes to launch in same time (default: 5)
+  -d, --depth=ARG      search depth (default: 3)
+  -s, --separator=ARG  Delimitor CSV (default: ;)
+  -h, --help           display this help
+  -v, --version        show version
+
+Respository: https://github.com/Azema/crawlerjs
+```
 Enjoy
 
 [Licence MIT](https://raw.githubusercontent.com/Azema/crawlerjs/master/LICENSE)
