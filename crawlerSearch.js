@@ -1,48 +1,59 @@
 var Crawler = require('./lib/crawler'),
     util = require('./util'),
     version   = require('./package.json').version,
-    defaultNbChild = 5;
+    defaultNbChild = 5,
+    Getopt = require('node-getopt');
 
-if (process.argv.length < 4) {
-  console.log('');
-  console.log('Crawler version: %s', version);
-  // console.log('');
-  console.log('\x1b[33mUsage:\x1b[0m crawlerSearch.js <\x1b[33mbaseUrl\x1b[0m> <\x1b[33mfileCSV\x1b[0m> [\x1b[33mnbProcess\x1b[0m (default: %d)]', defaultNbChild);
-  console.log('');
-  console.log('\x1b[33m\tbaseUrl:\x1b[0m Correspond à l\'URL de base du site sans le slash à la fin.');
-  console.log('');
-  console.log('\x1b[33m\tfile CSV:\x1b[0m Indiquez le chemin du fichier où vous souhaitez\n\tstocker les liens. L\'encodage du fichier est en UTF-8.');
-  console.log('');
-  console.log('\x1b[33m\tnbProcess:\x1b[0m \x1b[36mOptionel\x1b[0m, permet d\'indiquer le nombre\n\tde process lancés pour l\'analyse des pages Web.');
-  console.log('');
+var getopt = new Getopt([
+  ['o' , 'output=ARG'          , 'CSV file to save links'],
+  ['p' , 'processes=ARG'       , 'number of processes to launch in same time (default: 5)'],
+  ['d' , 'depth=ARG'           , 'search depth (default: 3)'],
+  ['s' , 'separator=ARG'       , 'Delimitor CSV (default: ;)'],
+  ['h' , 'help'                , 'display this help'],
+  ['v' , 'version'             , 'show version']
+])
+  .bindHelp(
+    "\x1b[40m\x1b[36mUsage:\x1b[0m node crawlerSearch.js [OPTION] baseUrl\n\n" +
+    '[[OPTIONS]]\n\n' +
+    "\x1b[40m\x1b[36mRespository:\x1b[0m https://github.com/Azema/crawlerjs\n"
+  );
+var args = getopt.parseSystem();
+// console.log(args);
+
+// console.log('');
+console.log('\x1b[45m\x1b[1;33mCrawler version:\x1b[0m %s', version);
+console.log('');
+
+if (args.options.version) {
   process.exit(0);
 }
-var baseUrl = process.argv[2];
-var fileCSV = process.argv[3];
-var nbChilds = parseInt(process.argv[4]) || defaultNbChild;
+if (args.argv.length <= 0) {
+  getopt.showHelp();
+  process.exit(1);
+}
+var baseUrl = args.argv[0];
+var fileCSV = args.options.output || 'links.csv';
+var nbChilds = args.options.processes ? parseInt(args.options.processes) : defaultNbChild;
 
 var regBaseUrl = new RegExp('^' + baseUrl);
+
 var options = {
-  depth: 3,
+  depth: args.options.depth ? parseInt(args.options.depth) : 3,
   shouldCrawl: function(link) {
     if (/javascript|#|mailto/i.test(link) || (/^https?:/.test(link) && !regBaseUrl.test(link))) {
       return false;
     }
     return true;
   },
-  optionsReq: {
-    headers: {'user-agent': 'Mozilla/5.0 (Windows NT 6.1; rv:35.0) Gecko/20100101 Firefox/35.0 CrawlerjsBot'},
-    debug: true
-  },
   nbChilds: nbChilds
 };
-var delimtor = ';',
+var delimtor = args.options.separator || ';',
     csv = 'source' + delimtor + 'destination' + delimtor + 'ancre\n',
     nbLinks = 0,
     crawler = new Crawler(),
     stream = process.stdout,
-    progress = '\x1b[36m%loader% %elaps% - %nbLinks% links - \x1b[32mTreated page(s):\x1b[0m %treated% \x1b[36m- \x1b[32mPending page(s):\x1b[0m %pending%', 
-    lastDraw, interval, pages = {pending: 0, treated: 0};
+    progress = '\x1b[40m\x1b[36m%loader% %elaps% - %nbLinks% links - \x1b[40m\x1b[32mTreated page(s):\x1b[40m\x1b[1;37m %treated%\x1b[0m \x1b[40m\x1b[36m-\x1b[0m \x1b[40m\x1b[32mPending page(s):\x1b[40m\x1b[1;37m %pending%\x1b[0m', 
+    lastDraw, interval, pages = {pending: 0, treated: 0}, exit = false;
 
 function updateProgress(tokens) {
   var str = progress;
@@ -74,12 +85,15 @@ crawler
     pages.pending++;
   })
   .on('end', function() {
-    clearInterval(interval);
+    if (exit) return;
+    if (interval) {
+      clearInterval(interval);
+    }
     console.log();
-    console.log('%d links found on %d pages, being written on %s', nbLinks, treated, fileCSV);
+    console.log('%d links found on %d pages, being written...', nbLinks, treated);
     require('fs').writeFile(fileCSV, csv, function(err) {
       if (err) {
-        console.error('Erreur lors de la création du fichier CSV ', err);
+        console.error('Error on write CSV file ', err);
       } else {
         console.log('Data saved on %s', fileCSV);
       }
@@ -97,3 +111,35 @@ crawler
   }, function onFailure(page) {
     console.error('\x1b[36mError on page (%s):\x1b[0m ', page.url, page.error);
   });
+
+process.on('exit', function() {
+  console.log('Thank you for using \x1b[40m\x1b[31mcrawlerjs\x1b[0m and good day.\n');
+});
+
+//      SIGNALS
+process.on('SIGINT', function() {
+  exit = true;
+  if (interval) {
+    clearInterval(interval);
+    interval = null;
+  }
+  console.log('\n\nSignal received. Closing childs in progress...\n');
+  crawler.close('SIGINT');
+});
+process.on('SIGTERM', function() {
+  exit = true;
+  if (interval) {
+    clearInterval(interval);
+    interval = null;
+  }
+  console.log('\n\nSignal received. Closing childs in progress...\n');
+  crawler.close('SIGTERM');
+});
+process.on('SIGHUP', function() {
+  exit = true;
+  if (interval) {
+    clearInterval(interval);
+    interval = null;
+  }
+  crawler.close('SIGHUP');
+});

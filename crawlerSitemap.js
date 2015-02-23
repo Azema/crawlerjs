@@ -6,36 +6,18 @@ var fs        = require('fs'),
     phantomjs = require('phantomjs'),
     util      = require('./util'),
     version   = require('./package.json').version,
-    defaultNbChild = 5;
+    defaultNbChild = 5,
+    Getopt = require('node-getopt'),
+    cluster = require('cluster');;
 
-if (process.argv.length < 5) {
-  console.log('');
-  console.log('Crawler version: %s', version);
-  // console.log('');
-  console.log('\x1b[33mUsage:\x1b[0m crawlerSitemap.js <\x1b[33mbaseUrl\x1b[0m> <\x1b[33msitemap\x1b[0m> <\x1b[33mfileCSV\x1b[0m> [\x1b[33mnbProcess\x1b[0m (default: %d)]', defaultNbChild);
-  console.log('');
-  console.log('\x1b[33m\tbaseUrl:\x1b[0m Correspond à l\'URL de base du site sans le slash à la fin.');
-  console.log('');
-  console.log('\x1b[33m\tsitemap:\x1b[0m Indiquez le chemin du fichier sitemap.xml du site.');
-  console.log('\tLe chemin peut être une URL HTTP ou le chemin d\'un fichier');
-  console.log('\tsystème (ex: ./sitemap.xml).');
-  console.log('');
-  console.log('\x1b[33m\tfile CSV:\x1b[0m Indiquez le chemin du fichier où vous souhaitez\n\tstocker les liens. L\'encodage du fichier est en UTF-8.');
-  console.log('');
-  console.log('\x1b[33m\tnbProcess:\x1b[0m \x1b[36mOptionel\x1b[0m, permet d\'indiquer le nombre\n\tde process lancés pour l\'analyse des pages Web.');
-  console.log('');
-  process.exit(0);
-}
-var baseUrl = process.argv[2];
-baseUrl = (baseUrl.substr(-1) === '/') ? baseUrl.substr(0, baseUrl.length-1) : baseUrl;
-var sitemap = process.argv[3];
-var fileCSV = process.argv[4];
-var nbChilds = process.argv[5] || defaultNbChild;
-var startTime = new Date().getTime();
 
 function getSitemap(pathSitemap, done) {
   if (/^https?:\/\//.test(pathSitemap)) {
-    require('http').get(pathSitemap, function(res) {
+    var module = 'http';
+    if (pathSitemap.substr(0,5) === 'https') {
+      module = 'https';
+    }
+    require(module).get(pathSitemap, function(res) {
       if (res.statusCode !== 200) {
         return done(res.statusCode);
       }
@@ -55,12 +37,47 @@ function getSitemap(pathSitemap, done) {
   }
 }
 
-var cluster = require('cluster');
 var numCPUs = require('os').cpus().length;
 
 if (cluster.isMaster) {
   var data = [], pending = numCPUs;
   var ProgressBar = require('progress');
+
+  var getopt = new Getopt([
+    ['s' , 'sitemap=ARG'         , 'Sitemap path (HTTP or FileSystem)'],
+    ['o' , 'output=ARG'          , 'CSV file to save links'],
+    ['p' , 'processes=ARG'       , 'number of processes to launch in same time (default: 5)'],
+    ['d' , 'delimitor=ARG'       , 'Delimitor CSV (default: ;)'],
+    ['h' , 'help'                , 'display this help'],
+    ['v' , 'version'             , 'show version']
+  ])
+    .bindHelp(
+      "\x1b[40m\x1b[36mUsage:\x1b[0m node crawlerSitemap.js [OPTION] baseUrl\n\n" +
+      '[[OPTIONS]]\n\n' +
+      "\x1b[40m\x1b[36mRespository:\x1b[0m https://github.com/Azema/crawlerjs\n"
+    );
+  var args = getopt.parseSystem();
+  // console.log(args);
+
+  // console.log('');
+  console.log('\x1b[45m\x1b[1;33mCrawler version:\x1b[0m %s', version);
+  console.log('');
+
+  if (args.options.version) {
+    process.exit(0);
+  }
+  if (args.argv.length <= 0 || !args.options.hasOwnProperty('sitemap')) {
+    getopt.showHelp();
+    process.exit(1);
+  }
+  var baseUrl = args.argv[0];
+  var sitemap = args.options.sitemap;
+  var fileCSV = args.options.output || 'links.csv';
+  var nbChilds = args.options.processes ? parseInt(args.options.processes) : defaultNbChild;
+  var delimitor = args.options.delimitor || ';';
+
+  baseUrl = (baseUrl.substr(-1) === '/') ? baseUrl.substr(0, baseUrl.length-1) : baseUrl;
+  var startTime = new Date().getTime();
 
   getSitemap(sitemap, function(err, result) {
     if (err) {
@@ -107,7 +124,7 @@ if (cluster.isMaster) {
             loader: 'Finish'
           });
           console.log('\n\x1b[35mAll urls are called, %d links found\x1b[0m', data.length);
-          util.transformToCsv(data, fileCSV, baseUrl, function(err) {
+          util.transformToCsv(data, fileCSV, baseUrl, delimitor, function(err) {
             process.exit(err ? 1 : 0);
           });
         }
