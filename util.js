@@ -1,11 +1,14 @@
 /*jshint sub: true */
 var util = exports = module.exports = {};
 
-util.transformToCsv = function(data, fileCSV, baseUrl, done) {
-  var csv = 'source;destination;ancre\n', separator = '', page, link;
+util.transformToCsv = function(data, fileCSV, baseUrl, separator, done) {
+  separator = separator || ';';
+  var csv = 'source' + separator + 'destination' + separator + 'ancre\n',
+      page, link;
   for (var i = 0, l = data.length; i < l; i++) {
     link = data[i];
-    csv += '"' + util.addBaseUrl(baseUrl, link.src) + '";"' + util.addBaseUrl(baseUrl, link.dest) + '";"' + link.anchor + '"\n';
+    csv += '"' + util.addBaseUrl(baseUrl, link.src) + '"' + separator + '"' 
+        + util.addBaseUrl(baseUrl, link.dest) + '"' + separator + '"' + link.anchor + '"\n';
   }
   
   require('fs').writeFile(fileCSV, csv, function (err) {
@@ -40,7 +43,7 @@ util.secondsToTime = function(seconds) {
     return Math.round(seconds) + ' s';
   }
   time = seconds;
-  for (var i=0; i<times.length; i++) {
+  for (var i=0, _l = times.length; i<_l; i++) {
     time = time / times[i].dividor;
     seconds = Math.round(time, 1);
     if (0 !== time % 1) {
