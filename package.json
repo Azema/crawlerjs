@@ -10,8 +10,8 @@
     "libxmljs": "0.13.*",
     "phantom": "^0.7.2",
     "phantomjs": "1.9.15",
-    "progress": "1.1.8"
+    "progress": "1.1.8",
+    "underscore": "~1.6.0"
   },
-  "devDependencies": {
-  }
+  "devDependencies": {}
 }

@@ -10,7 +10,7 @@ if (process.argv.length < 3) {
   console.log('');
   console.log('Crawler version: %s', version);
   // console.log('');
-  console.log('\x1b[33mUsage:\x1b[0m crawler.js <\x1b[33mbaseUrl\x1b[0m> <\x1b[33mfileCSV\x1b[0m> [\x1b[33mnbProcess\x1b[0m (default: %d)]', defaultNbChild);
+  console.log('\x1b[33mUsage:\x1b[0m searchLinks.js <\x1b[33mbaseUrl\x1b[0m> <\x1b[33mfileCSV\x1b[0m> [\x1b[33mnbProcess\x1b[0m (default: %d)]', defaultNbChild);
   console.log('');
   console.log('\x1b[33m\tbaseUrl:\x1b[0m Correspond à l\'URL de base du site sans le slash à la fin.');
   console.log('');
@@ -27,8 +27,8 @@ if (!checkUrl(baseUrl)) {
 }
 baseUrl = (baseUrl.substr(-1) === '/') ? baseUrl.substr(0, baseUrl.length-1) : baseUrl;
 var site = new page(baseUrl);
-var fileCSV = process.argv[4] || 'linksCrawler.csv';
-var nbChilds = process.argv[5] || defaultNbChild;
+var fileCSV = process.argv[3] || 'searchLinks.csv';
+var nbChilds = process.argv[4] || defaultNbChild;
 var startTime = new Date().getTime();
 var SAP = null;
 
@@ -81,7 +81,7 @@ var analyse = new pagesToAnalyze();
 analyse.on('newPage', function() {
   var aPage = analyse.shift();
   pagesPending.push(aPage.url);
-  console.log(aPage);
+  // console.log(aPage);
   getPage(aPage.url, function(err, html) {
     if (err) {
       console.error('Error getPage: ', err);
@@ -190,7 +190,7 @@ function getPage(url, done) {
   });
 }
 
-function writeToCSV(pages) {
+function writeToCSV(pages, done) {
   var csv = 'source;destination\n', separator = '', aPage, link;
   for (var i = 0, l = pages.length; i < l; i++) {
     aPage = pages[i];
@@ -198,11 +198,21 @@ function writeToCSV(pages) {
       csv += '"' + aPage.url + '";"' + aPage.links[j] + '"\n';
     }
   }
-  console.log('writeToCSV', fileCSV);
   
   fs.writeFileSync(fileCSV, csv);
+  done();
+  // function(err) {
+  //   if (err) {
+  //     console.error('Erreur lors de la création du fichier CSV ', err);
+  //   } else {
+  //     console.log('Data saved on %s', fileCSV);
+  //   }
+  //   return done(err);
+  // });
 };
 process.on('exit', function() {
   console.log('exit');
-  writeToCSV(pageLinks);
+  writeToCSV(pageLinks, function(err) {
+    console.log('Elapsed time: %s', utils.secondsToTime((new Date().getTime() - startTime) / 1000));
+  });
 });

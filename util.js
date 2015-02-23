@@ -35,18 +35,19 @@ util.secondsToTime = function(seconds) {
     {suffix: 'm', dividor: 60},
     {suffix: 'h', dividor: 60},
     {suffix: 'd', dividor: 24}
-  ], orig = seconds, time, remaining;
+  ], orig = seconds, time, remaining, string;
   if (seconds < 60) {
     return Math.round(seconds) + ' s';
   }
+  time = seconds;
   for (var i=0; i<times.length; i++) {
-    time = seconds / times[i].dividor;
+    time = time / times[i].dividor;
     seconds = Math.round(time, 1);
     if (0 !== time % 1) {
       remaining = time % 1;
     }
     if ( seconds < times[i].dividor) {
-      var string = seconds + ' ' + times[i].suffix;
+      string = seconds + ' ' + times[i].suffix;
       if (remaining && i > 0) {
         string += ' ' + Math.round(remaining * times[i-1].dividor) + ' ' + times[i-1].suffix;
       } else if (remaining) {

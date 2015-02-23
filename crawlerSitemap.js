@@ -12,7 +12,7 @@ if (process.argv.length < 5) {
   console.log('');
   console.log('Crawler version: %s', version);
   // console.log('');
-  console.log('\x1b[33mUsage:\x1b[0m crawler.js <\x1b[33mbaseUrl\x1b[0m> <\x1b[33msitemap\x1b[0m> <\x1b[33mfileCSV\x1b[0m> [\x1b[33mnbProcess\x1b[0m (default: %d)]', defaultNbChild);
+  console.log('\x1b[33mUsage:\x1b[0m crawlerSitemap.js <\x1b[33mbaseUrl\x1b[0m> <\x1b[33msitemap\x1b[0m> <\x1b[33mfileCSV\x1b[0m> [\x1b[33mnbProcess\x1b[0m (default: %d)]', defaultNbChild);
   console.log('');
   console.log('\x1b[33m\tbaseUrl:\x1b[0m Correspond à l\'URL de base du site sans le slash à la fin.');
   console.log('');
@@ -140,7 +140,7 @@ if (cluster.isMaster) {
       }
       var _data = '', web;
       waiting--;
-      web = child.spawn(phantomjs.path, ["--load-images=false", "--ignore-ssl-errors=yes", '--ssl-protocol=tlsv1', __dirname + '/netsniff.js', url]);
+      web = child.spawn(phantomjs.path, ["--load-images=false", "--ignore-ssl-errors=yes", '--ssl-protocol=tlsv1', __dirname + '/lib/netsniff.js', url]);
       web.stdout.on('data', function(data) {
         _data += data.toString();
       });
