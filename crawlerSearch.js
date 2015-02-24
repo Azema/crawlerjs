@@ -1,14 +1,16 @@
 var Crawler = require('./lib/crawler'),
     util = require('./util'),
+    fs = require('fs'),
     version   = require('./package.json').version,
     defaultNbChild = 5,
-    Getopt = require('node-getopt');
+    Getopt = require('node-getopt'),
+    iconv = require('iconv-lite');
 
 var getopt = new Getopt([
-  ['o' , 'output=ARG'          , 'CSV file to save links'],
+  ['o' , 'output=ARG'          , 'output file to save links'],
   ['p' , 'processes=ARG'       , 'number of processes to launch in same time (default: 5)'],
   ['d' , 'depth=ARG'           , 'search depth (default: 3)'],
-  ['s' , 'separator=ARG'       , 'Delimitor CSV (default: ;)'],
+  ['f' , 'format=ARG'          , 'format output file: CSV, XLS (default: CSV)'],
   ['h' , 'help'                , 'display this help'],
   ['v' , 'version'             , 'show version']
 ])
@@ -47,13 +49,55 @@ var options = {
   },
   nbChilds: nbChilds
 };
-var delimtor = args.options.separator || ';',
-    csv = 'source' + delimtor + 'destination' + delimtor + 'ancre\n',
+var format = args.options.format.toLowerCase() || 'csv',
     nbLinks = 0,
     crawler = new Crawler(),
     stream = process.stdout,
+    output = fs.createWriteStream(fileCSV),
     progress = '\x1b[40m\x1b[36m%loader% %elaps% - %nbLinks% links - \x1b[40m\x1b[32mTreated page(s):\x1b[40m\x1b[1;37m %treated%\x1b[0m \x1b[40m\x1b[36m-\x1b[0m \x1b[40m\x1b[32mPending page(s):\x1b[40m\x1b[1;37m %pending%\x1b[0m', 
-    lastDraw, interval, pages = {pending: 0, treated: 0}, exit = false;
+    lastDraw, interval, pages = {pending: 0, treated: 0}, exit = false, delimitor;
+
+switch (format) {
+  case 'csv':
+    delimitor = ';';
+    break;
+  case 'xls':
+    delimitor = '\t';
+    break;
+  default:
+    console.log('\x1b[40m\x1b[1;31mFormat unknown (%s)\x1b[0m\n', format);
+    getopt.showHelp();
+    process.exit(1);
+}
+
+output
+  .on('error', function(error) {
+    // console.log(error);
+    console.log('\n\x1b[40m\x1b[1;31mThe file (%s) is not writeable, please check file\x1b[0m\n', fileCSV);
+    process.exit(1);
+  })
+  .on('finish', function() {
+      output.close();
+      console.log('%d links found on %d pages, being written...', nbLinks, pages.treated);
+      console.log('Data saved on %s', fileCSV);
+  });
+
+function writeOutput(data) {
+  var txt = '';
+  if (data instanceof Array && data[0] instanceof Array) {
+    for (var i = 0, _l = data.length; i < _l; i++) {
+      txt += data[i].join(delimitor) + '\n';
+    };
+  } else if (data instanceof Array) {
+    txt = data.join(delimitor) + '\n';
+  } else if (typeof data === 'string') {
+    txt = data + '\n';
+  } else {
+    return;
+  }
+  return output.write(iconv.toEncoding(txt, 'win-1252'));
+}
+writeOutput(['source', 'destination', 'ancre', 'occurrences']);
 
 function updateProgress(tokens) {
   var str = progress;
@@ -90,56 +134,49 @@ crawler
       clearInterval(interval);
     }
     console.log();
-    console.log('%d links found on %d pages, being written...', nbLinks, pages.treated);
-    require('fs').writeFile(fileCSV, csv, function(err) {
-      if (err) {
-        console.error('Error on write CSV file ', err);
-      } else {
-        console.log('Data saved on %s', fileCSV);
-      }
-    });
+    output.end('');
   })
   .configure(options)
   .crawl(baseUrl, function onSuccess(page) {
     pages.pending--;
     pages.treated++;
-    for (var i=0, _l=page.links.length; i < _l; i++) {
-      csv += page.url + delimtor + page.links[i].dest + delimtor + '"' + page.links[i].anchor + '"\n';
+    var links = [], link, keys, key, duplicates = {}, i;
+    for (i=0, _l=page.links.length; i < _l; i++) {
+      key = page.url + page.links[i].dest;
+      if (!duplicates.hasOwnProperty(key)) {
+        page.links[i].number = 0;
+        duplicates[key] = page.links[i];
+      }
+      duplicates[key].number++;
       nbLinks++;
     }
+    keys = Object.keys(duplicates);
+    for (i=0, _l=keys.length; i < _l; i++) {
+      link = duplicates[keys[i]];
+      links.push([page.url, link.dest, link.anchor, link.number]);
+    }
+    writeOutput(links);
     // console.log('%d nbLinks on : %s', nbLinks);
   }, function onFailure(page) {
-    console.error('\x1b[36mError on page (%s):\x1b[0m ', page.url, page.error);
+    console.error('\n\x1b[36mError on page (%s):\x1b[0m ', page.url, page.error);
   });
 
 process.on('exit', function() {
   console.log('Thank you for using \x1b[40m\x1b[31mcrawlerjs\x1b[0m and good day.\n');
 });
-
-//      SIGNALS
-process.on('SIGINT', function() {
+function close() {
   exit = true;
   if (interval) {
     clearInterval(interval);
     interval = null;
+  }
+  if (output) {
+    output.close();
   }
   console.log('\n\nSignal received. Closing childs in progress...\n');
   crawler.close('SIGINT');
-});
-process.on('SIGTERM', function() {
-  exit = true;
-  if (interval) {
-    clearInterval(interval);
-    interval = null;
-  }
-  console.log('\n\nSignal received. Closing childs in progress...\n');
-  crawler.close('SIGTERM');
-});
-process.on('SIGHUP', function() {
-  exit = true;
-  if (interval) {
-    clearInterval(interval);
-    interval = null;
-  }
-  crawler.close('SIGHUP');
-});
+}
+//      SIGNALS
+process.on('SIGINT', close);
+process.on('SIGTERM', close);
+process.on('SIGHUP', close);
