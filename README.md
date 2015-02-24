@@ -32,10 +32,10 @@ CrawlerSearch research links and follows them to build a tree.
 ```bash
 Usage: node crawlerSearch.js [OPTION] baseUrl
 
-  -o, --output=ARG     CSV file to save links
+  -o, --output=ARG     output file to save links
   -p, --processes=ARG  number of processes to launch in same time (default: 5)
   -d, --depth=ARG      search depth (default: 3)
-  -s, --separator=ARG  Delimitor CSV (default: ;)
+  -f, --format=ARG     format output file: CSV, XLS (default: CSV)
   -h, --help           display this help
   -v, --version        show version
 
