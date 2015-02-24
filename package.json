@@ -2,7 +2,7 @@
   "author": "Manuel Hervo",
   "name": "crawler",
   "description": "crawler for website with sitemap.xml.",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "engines": {
     "node": "0.10.33"
   },

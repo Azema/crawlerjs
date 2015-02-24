@@ -90,7 +90,7 @@ crawler
       clearInterval(interval);
     }
     console.log();
-    console.log('%d links found on %d pages, being written...', nbLinks, treated);
+    console.log('%d links found on %d pages, being written...', nbLinks, pages.treated);
     require('fs').writeFile(fileCSV, csv, function(err) {
       if (err) {
         console.error('Error on write CSV file ', err);
